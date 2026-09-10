@@ -124,7 +124,10 @@ class SkillEvaluatorImpl(
         }
         val skillInfo = chosenSkill.skill.correspondingSkillInfo
 
-        DiagnosticsLog.log("ROUTER", "выбран навык: ${skillInfo.name} (ввод: \"$chosenInput\")")
+        DiagnosticsLog.log(
+            "ROUTER",
+            "выбран навык: ${skillInfo.name(skillContext.android)} (ввод: \"$chosenInput\")"
+        )
 
         _state.value = _state.value.copy(
             pendingQuestion = PendingQuestion(
@@ -147,7 +150,10 @@ class SkillEvaluatorImpl(
 
             skillContext.previousOutput =
                 _state.value.interactions.lastOrNull()?.questionsAnswers?.lastOrNull()?.answer
-            DiagnosticsLog.log("SKILL", "выполняю generateOutput для навыка \"${skillInfo.name}\"")
+            DiagnosticsLog.log(
+                "SKILL",
+                "выполняю generateOutput для навыка \"${skillInfo.name(skillContext.android)}\""
+            )
             val output = chosenSkill.generateOutput(skillContext)
 
             val speechText = output.getSpeechOutput(skillContext)
