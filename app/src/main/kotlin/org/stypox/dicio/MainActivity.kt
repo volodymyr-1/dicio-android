@@ -34,6 +34,7 @@ import org.stypox.dicio.ui.home.wakeWordPermissions
 import org.stypox.dicio.ui.nav.Navigation
 import org.stypox.dicio.util.BaseActivity
 import org.stypox.dicio.util.DiagnosticsLog
+import java.io.File
 import java.time.Instant
 import javax.inject.Inject
 
@@ -112,8 +113,9 @@ class MainActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         isCreated += 1
 
-        // Bootstrap-запись диагностики: проверяет, что тег Dicio вообще доходит до logcat.
-        // (временный маркер для отладки Шага 1)
+        // Журнал диагностики: файл filesDir/diagnostics.log для чтения с ПК через adb.
+        DiagnosticsLog.initFile(File(filesDir, "diagnostics.log"))
+        // Bootstrap-запись диагностики: маркер, что приложение дошло до onCreate.
         DiagnosticsLog.log("BOOT", "MainActivity onCreate")
 
         handleWakeWordTurnOnScreen(intent)
