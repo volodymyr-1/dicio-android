@@ -16,7 +16,7 @@ object Similarity {
         val b = StringBuilder(value.length)
         for (c in value) {
             when {
-                c.isLetterOrDigit() -> b.append(c.toLowerCase())
+                c.isLetterOrDigit() -> b.append(c.lowercaseChar())
                 c == ' ' -> b.append(' ')
                 // любой другой символ (пунктуация и пр.) игнорируем
                 else -> {}
