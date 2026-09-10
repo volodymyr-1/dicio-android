@@ -39,15 +39,21 @@ object DiagnosticsLog {
      * @param message содержимое записи.
      */
     fun log(stage: String, message: String) {
-        val line = "${timestampFormat.format(Date())} [$stage] $message"
-        synchronized(buffer) {
-            buffer.addLast(line)
-            if (buffer.size > MAX_ENTRIES) {
-                buffer.pollFirst()
+        val line = "[$stage] $message"
+        try {
+            synchronized(buffer) {
+                buffer.addLast("${timestampFormat.format(Date())} $line")
+                if (buffer.size > MAX_ENTRIES) {
+                    buffer.pollFirst()
+                }
             }
+        } catch (t: Throwable) {
+            // Не роняем цикл из-за логирования, но сигнализируем в logcat.
+            Log.e(TAG, "DiagnosticsLog failed: $t")
         }
         // Дублируем в Logcat под узнаваемым тегом, чтобы легко читать поток с ПК.
-        Log.i(TAG, line)
+        // Используем уровень Error — на этом устройстве Info-логи приложения могут не выводиться.
+        Log.e(TAG, line)
     }
 
     /**

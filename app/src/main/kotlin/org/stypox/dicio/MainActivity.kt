@@ -33,6 +33,7 @@ import org.stypox.dicio.io.wake.WakeState.NotLoaded
 import org.stypox.dicio.ui.home.wakeWordPermissions
 import org.stypox.dicio.ui.nav.Navigation
 import org.stypox.dicio.util.BaseActivity
+import org.stypox.dicio.util.DiagnosticsLog
 import java.time.Instant
 import javax.inject.Inject
 
@@ -110,6 +111,10 @@ class MainActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         isCreated += 1
+
+        // Bootstrap-запись диагностики: проверяет, что тег Dicio вообще доходит до logcat.
+        // (временный маркер для отладки Шага 1)
+        DiagnosticsLog.log("BOOT", "MainActivity onCreate")
 
         handleWakeWordTurnOnScreen(intent)
         if (isAssistIntent(intent)) {
