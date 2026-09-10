@@ -35,6 +35,7 @@ import org.stypox.dicio.R
 import org.stypox.dicio.di.SttInputDeviceWrapper
 import org.stypox.dicio.di.WakeDeviceWrapper
 import org.stypox.dicio.eval.SkillEvaluator
+import org.stypox.dicio.util.DiagnosticsLog
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -222,6 +223,7 @@ class WakeService : Service() {
     }
 
     private fun onWakeWordDetected() {
+        DiagnosticsLog.log("WAKE", "wake word услышан")
         Log.d(TAG, "Wake word detected")
 
         val intent = Intent(this, MainActivity::class.java)

@@ -8,6 +8,7 @@ import android.widget.Toast
 import androidx.annotation.StringRes
 import org.dicio.skill.context.SpeechOutputDevice
 import org.stypox.dicio.R
+import org.stypox.dicio.util.DiagnosticsLog
 import java.util.Locale
 
 class AndroidTtsSpeechDevice(private var context: Context, locale: Locale) : SpeechOutputDevice {
@@ -54,6 +55,7 @@ class AndroidTtsSpeechDevice(private var context: Context, locale: Locale) : Spe
     }
 
     override fun speak(speechOutput: String) {
+        DiagnosticsLog.log("TTS", "озвучиваю: \"$speechOutput\"")
         if (initializedCorrectly) {
             lastUtteranceId += 1
             textToSpeech?.speak(

@@ -23,6 +23,7 @@ import org.stypox.dicio.ui.home.Interaction
 import org.stypox.dicio.ui.home.InteractionLog
 import org.stypox.dicio.ui.home.PendingQuestion
 import org.stypox.dicio.ui.home.QuestionAnswer
+import org.stypox.dicio.util.DiagnosticsLog
 import javax.inject.Singleton
 import org.dicio.skill.standard.util.MatchHelper
 
@@ -65,9 +66,17 @@ class SkillEvaluatorImpl(
     private suspend fun suspendProcessInputEvent(event: InputEvent) {
         when (event) {
             is InputEvent.Error -> {
+                DiagnosticsLog.log(
+                    "STT",
+                    "ошибка распознавания STT: ${event.throwable.javaClass.simpleName}"
+                )
                 addErrorInteractionFromPending(event.throwable)
             }
             is InputEvent.Final -> {
+                DiagnosticsLog.log(
+                    "STT",
+                    "распознано: \"${event.utterances[0].first}\" (альтернатив=${event.utterances.size})"
+                )
                 _state.value = _state.value.copy(
                     pendingQuestion = PendingQuestion(
                         userInput = event.utterances[0].first,
@@ -78,6 +87,7 @@ class SkillEvaluatorImpl(
                 evaluateMatchingSkill(event.utterances.map { it.first })
             }
             InputEvent.None -> {
+                DiagnosticsLog.log("STT", "не расслышано (пустой результат)")
                 _state.value = _state.value.copy(pendingQuestion = null)
             }
             is InputEvent.Partial -> {
@@ -114,6 +124,8 @@ class SkillEvaluatorImpl(
         }
         val skillInfo = chosenSkill.skill.correspondingSkillInfo
 
+        DiagnosticsLog.log("ROUTER", "выбран навык: ${skillInfo.name} (ввод: \"$chosenInput\")")
+
         _state.value = _state.value.copy(
             pendingQuestion = PendingQuestion(
                 userInput = chosenInput,
@@ -135,7 +147,15 @@ class SkillEvaluatorImpl(
 
             skillContext.previousOutput =
                 _state.value.interactions.lastOrNull()?.questionsAnswers?.lastOrNull()?.answer
+            DiagnosticsLog.log("SKILL", "выполняю generateOutput для навыка \"${skillInfo.name}\"")
             val output = chosenSkill.generateOutput(skillContext)
+
+            val speechText = output.getSpeechOutput(skillContext)
+            DiagnosticsLog.log(
+                "OUTPUT",
+                if (speechText.isNotBlank()) "ответ: \"$speechText\""
+                else "ответ без голосового текста (только графический вывод)"
+            )
 
             val interactionPlan = output.getInteractionPlan(skillContext)
             addInteractionFromPending(output)
@@ -180,6 +200,10 @@ class SkillEvaluatorImpl(
     }
 
     private fun addErrorInteractionFromPending(throwable: Throwable) {
+        DiagnosticsLog.log(
+            "ERROR",
+            "исключение: ${throwable.javaClass.simpleName} — ${throwable.message ?: "нет сообщения"}"
+        )
         Log.e(TAG, "Error while evaluating skills", throwable)
         addInteractionFromPending(ErrorSkillOutput(throwable, true))
     }

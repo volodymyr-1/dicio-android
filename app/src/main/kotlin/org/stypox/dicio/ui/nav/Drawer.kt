@@ -19,6 +19,11 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -30,7 +35,9 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import org.stypox.dicio.R
+import org.stypox.dicio.util.DiagnosticsLog
 
 @Composable
 fun DrawerContent(
@@ -79,6 +86,60 @@ fun DrawerContent(
             },
             modifier = Modifier.padding(horizontal = 12.dp),
         )
+
+        DrawerDiagnosticsLog(modifier = Modifier.padding(horizontal = 12.dp))
+    }
+}
+
+/**
+ * Панель диагностики в выезжающем меню: показывает последние записи [DiagnosticsLog],
+ * которые автоматически обновляются раз в секунду. Это позволяет видеть цикл работы
+ * (wake word -> распознавание -> выбор навыка -> ответ/TTS) прямо на устройстве.
+ */
+@Composable
+private fun DrawerDiagnosticsLog(modifier: Modifier = Modifier) {
+    var entries by remember { mutableStateOf(DiagnosticsLog.snapshot()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            entries = DiagnosticsLog.snapshot()
+            delay(1000)
+        }
+    }
+
+    HorizontalDivider(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    )
+    Text(
+        text = "Диагностика",
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier,
+    )
+    val last = entries.takeLast(8)
+    if (last.isEmpty()) {
+        Text(
+            text = "(пока пусто — вызовите wake word или подайте команду)",
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
+        )
+    } else {
+        Column(
+            modifier = Modifier
+                .padding(top = 4.dp, bottom = 8.dp)
+                .fillMaxWidth()
+        ) {
+            for (entry in last.reversed()) {
+                Text(
+                    text = entry,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
     }
 }
 
