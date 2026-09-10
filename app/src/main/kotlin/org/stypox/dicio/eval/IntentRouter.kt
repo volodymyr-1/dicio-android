@@ -29,6 +29,9 @@ class IntentRouter(
 
     private data class Tpl(val keywords: List<String>, val intent: String, val reply: String? = null)
 
+    /** Междометия-подтверждения (короткий шум из боевых логов). */
+    private val JustAcknowledgements: List<String> = listOf("ага", "ок", "да", "понятно", "угу", "ясно")
+
     /** Ключевые слова для точного сопоставления (по образцу voice-loop Router). */
     private val templates: List<Tpl> = listOf(
         Tpl(listOf("врем", "который час", "во сколько", "сколько сейчас", "сколько времени", "час"), "TIME"),
@@ -38,6 +41,7 @@ class IntentRouter(
         Tpl(listOf("пока", "до свидания", "всего доброго"), "BYE", "До свидания! Хорошего дня."),
         Tpl(listOf("как тебя зовут", "твоё имя"), "NAME", "Меня зовут Dicio."),
         Tpl(listOf("кто ты", "ты кто", "что ты такое"), "WHO", "Я ваш домашний голосовой ассистент."),
+        Tpl(listOf("что ты умеешь", "что ты можешь", "твои возможности", "что ты ещё умеешь"), "SKILLS", "Я умею сообщать время и погоду, отвечать на вопросы, считать, ставить таймеры и многое другое. Скажите команду — помогу."),
         Tpl(listOf("спасибо", "благодарю"), "THANKS", "Пожалуйста! Рад помочь."),
         Tpl(listOf("заряд батареи", "сколько заряда", "уровень заряда"), "BATTERY"),
         Tpl(listOf("сделай потише", "стань тише", "говори тише"), "VOLUME_DOWN", "Снижаю громкость."),
@@ -58,6 +62,16 @@ class IntentRouter(
         val text = rawText.trim()
         if (text.isEmpty()) return null
         val t = Similarity.norm(text)
+
+        // 0) Междометия/короткий шум (по боевым логам: «ага», «мне», «ок», «да»).
+        if (t.split(" ").size <= 2) {
+            if (JustAcknowledgements.any { t == it }) {
+                return Decision("ACK", "Понял.", rawText, "exact", 1.0)
+            }
+            if (t.length < 3) {
+                return Decision("UNKNOWN_SHORT", "Извините, не расслышала.", rawText, "exact", 1.0)
+            }
+        }
 
         // 1) точный match: есть ли ключевое слово целиком в фразе
         for (template in templates) {

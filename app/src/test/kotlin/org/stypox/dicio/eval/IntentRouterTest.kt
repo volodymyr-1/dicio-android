@@ -24,6 +24,15 @@ class IntentRouterTest : StringSpec({
         router.classify("сделай погромче")!!.reply shouldBe "Увеличиваю громкость."
     }
 
+    "skills/ack/noise: новые интенты из боевых логов" {
+        router.classify("что ты умеешь")!!.intent shouldBe "SKILLS"
+        router.classify("что ты ещё умеешь делать")!!.intent shouldBe "SKILLS"
+        router.classify("ага")!!.intent shouldBe "ACK"
+        router.classify("ага")!!.reply shouldBe "Понял."
+        router.classify("мне")!!.intent shouldBe "UNKNOWN_SHORT"
+        router.classify("мон")!!.intent shouldBe "UNKNOWN_SHORT"
+    }
+
     "fuzzy: нечётное совпадение распознаётся" {
         // распознанная с искажением фраза должна всё равно дать интент
         router.classify("сколько сечас")!!.intent shouldBe "TIME"
