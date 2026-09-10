@@ -18,6 +18,7 @@ import org.stypox.dicio.di.SkillContextInternal
 import org.stypox.dicio.di.SttInputDeviceWrapper
 import org.stypox.dicio.io.graphical.ErrorSkillOutput
 import org.stypox.dicio.io.graphical.MissingPermissionsSkillOutput
+import org.stypox.dicio.io.graphical.StaticReplySkillOutput
 import org.stypox.dicio.io.input.InputEvent
 import org.stypox.dicio.ui.home.Interaction
 import org.stypox.dicio.ui.home.InteractionLog
@@ -42,6 +43,9 @@ class SkillEvaluatorImpl(
 ) : SkillEvaluator {
 
     private val scope = CoroutineScope(Dispatchers.Default)
+
+    /** Детерминированный роутер «сквозных» интентов (Вариант C, fuzzy-first). */
+    private val intentRouter = IntentRouter()
 
     private val skillRanker: SkillRanker
         get() = skillHandler.skillRanker.value
@@ -106,6 +110,29 @@ class SkillEvaluatorImpl(
     }
 
     private suspend fun evaluateMatchingSkill(utterances: List<String>) {
+        // Детерминированный роутер «сквозных» интентов (Вариант C): если фраза уверенно
+        // сопоставилась с известным интентом, отвечаем мгновенно и не идём в свободный SkillRanker.
+        val firstInput = utterances.firstOrNull()
+        if (firstInput != null) {
+            val decision = intentRouter.classify(firstInput)
+            if (decision != null && decision.reply != null) {
+                DiagnosticsLog.log(
+                    "ROUTER",
+                    "интент=${decision.intent} (${decision.matchType}, score=${decision.score}) " +
+                        "ввод=\"$firstInput\" -> статичный ответ"
+                )
+                _state.value = _state.value.copy(
+                    pendingQuestion = PendingQuestion(
+                        userInput = firstInput,
+                        continuesLastInteraction = false,
+                        skillBeingEvaluated = null,
+                    )
+                )
+                addInteractionFromPending(StaticReplySkillOutput(decision.reply))
+                return
+            }
+        }
+
         val (chosenInput, chosenSkill) = try {
             utterances.firstNotNullOfOrNull { input: String ->
                 skillContext.standardMatchHelper = MatchHelper(skillContext.parserFormatter, input)
