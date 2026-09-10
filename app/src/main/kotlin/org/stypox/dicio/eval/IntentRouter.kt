@@ -30,7 +30,7 @@ class IntentRouter(
 
     /** Ключевые слова для точного сопоставления (по образцу voice-loop Router). */
     private val templates: List<Tpl> = listOf(
-        Tpl(listOf("врем", "который час", "во сколько", "сколько сейчас", "сколько времени"), "TIME"),
+        Tpl(listOf("врем", "который час", "во сколько", "сколько сейчас", "сколько времени", "час"), "TIME"),
         Tpl(listOf("какое число", "сегодня число", "какой день недели", "день недели", "какой год", "время года"), "DATE"),
         Tpl(listOf("погод", "градус", "на улице", "холодн", "тепл", "как одеться"), "WEATHER"),
         Tpl(listOf("привет", "здравствуйте", "добрый день", "доброе утро", "добрый вечер", "доброй ночи"), "GREETING"),
@@ -65,13 +65,13 @@ class IntentRouter(
             }
         }
 
-        // 2) нечётный match: ищем похожую ключевую фразу (fuzzy по подстроке/похожести)
+        // 2) нечётный match: ищем похожее слово из ключевых фраз (ловит оговорки)
         var bestScore = 0.0
         var bestTemplate: Tpl? = null
         for (template in templates) {
             for (keyword in template.keywords) {
                 if (keyword.length < 3) continue
-                val score = fuzzyScore(t, keyword)
+                val score = fuzzyContains(t, Similarity.norm(keyword))
                 if (score > bestScore) {
                     bestScore = score
                     bestTemplate = template
@@ -90,15 +90,21 @@ class IntentRouter(
      * Насколько фраза в целом похожа на ключевую. Сопоставляет нормированный ввод с ключом.
      * Точное вхождение ключевого слова (как подстроки) даёт 1.0, иначе Jaro–Winkler.
      */
-    private fun fuzzyScore(inputN: String, keyword: String): Double {
-        val keyN = Similarity.norm(keyword)
-        if (keyN.isEmpty()) return 0.0
-        if (inputN.contains(keyN)) return 1.0
-        return Similarity.similarity(inputN, keyN)
+    private fun fuzzyContains(inputN: String, keywordNorm: String): Double {
+        if (keywordNorm.isEmpty()) return 0.0
+        if (inputN.contains(keywordNorm)) return 1.0
+        // Нечёткое сходство по словам входа с ключевым словом (ловит оговорки «сечас»→«сейчас»).
+        var best = 0.0
+        for (word in inputN.split(" ")) {
+            if (word.length < 3) continue
+            val s = Similarity.similarity(word, keywordNorm)
+            if (s > best) best = s
+        }
+        return best
     }
 
     companion object {
-        /** Средний порог: всё, что уверенно похоже на известную фразу, считаем интентом. */
-        const val DEFAULT_FUZZY_THRESHOLD = 0.80
+        /** Порог уверенности для нечётного совпадения по слову (0..1), ниже — считаем «не нашлось». */
+        const val DEFAULT_FUZZY_THRESHOLD = 0.75
     }
 }
