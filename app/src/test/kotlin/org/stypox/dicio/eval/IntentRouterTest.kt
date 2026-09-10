@@ -32,7 +32,7 @@ class IntentRouterTest : StringSpec({
     }
 
     "unknown: посторонняя фраза не даёт интента" {
-        router.classify("какой фильм посмотреть вечером").shouldBeNull()
-        router.classify("где моя сумка").shouldBeNull()
+        router.classify("абракадабра").shouldBeNull()
+        router.classify("квантитативный анализ данных").shouldBeNull()
     }
 })
