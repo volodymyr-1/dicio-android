@@ -87,9 +87,11 @@ class WakeService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP_WAKE_SERVICE) {
+            DiagnosticsLog.log("WAKE", "служба wake word остановлена")
             listening.set(false)
             return START_NOT_STICKY
         }
+        DiagnosticsLog.log("WAKE", "служба wake word запущена (прослушивание)")
 
         try {
             createForegroundNotification(wakeDevice.isHeyDicio.value)
