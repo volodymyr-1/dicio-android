@@ -30,7 +30,7 @@ class IntentRouterTest : StringSpec({
         router.classify("ага")!!.intent shouldBe "ACK"
         router.classify("ага")!!.reply shouldBe "Понял."
         router.classify("мне")!!.intent shouldBe "UNKNOWN_SHORT"
-        router.classify("мон")!!.intent shouldBe "UNKNOWN_SHORT"
+        router.classify("мм")!!.intent shouldBe "UNKNOWN_SHORT"
     }
 
     "fuzzy: нечётное совпадение распознаётся" {

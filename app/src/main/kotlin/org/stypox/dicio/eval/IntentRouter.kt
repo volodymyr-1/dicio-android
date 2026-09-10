@@ -32,6 +32,9 @@ class IntentRouter(
     /** Междометия-подтверждения (короткий шум из боевых логов). */
     private val JustAcknowledgements: List<String> = listOf("ага", "ок", "да", "понятно", "угу", "ясно")
 
+    /** Служебные слова-обрывки, которые не являются командами (UNKNOWN_SHORT). */
+    private val ShortNoiseWords: List<String> = listOf("мне", "ну", "так", "это", "мда", "ммм")
+
     /** Ключевые слова для точного сопоставления (по образцу voice-loop Router). */
     private val templates: List<Tpl> = listOf(
         Tpl(listOf("врем", "который час", "во сколько", "сколько сейчас", "сколько времени", "час"), "TIME"),
@@ -68,7 +71,8 @@ class IntentRouter(
             if (JustAcknowledgements.any { t == it }) {
                 return Decision("ACK", "Понял.", rawText, "exact", 1.0)
             }
-            if (t.length < 3) {
+            // Одиночные 1–2-буквенные обрывки или служебные слова-мусор -> вежливый отказ.
+            if (t.length < 3 || ShortNoiseWords.any { t == it }) {
                 return Decision("UNKNOWN_SHORT", "Извините, не расслышала.", rawText, "exact", 1.0)
             }
         }
