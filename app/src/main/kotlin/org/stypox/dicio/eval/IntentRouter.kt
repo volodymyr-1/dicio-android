@@ -1,6 +1,7 @@
 package org.stypox.dicio.eval
 
 import org.stypox.dicio.util.Similarity
+import org.stypox.dicio.util.StringUtils
 
 /**
  * Детерминированный роутер интентов (Вариант C, fuzzy-first).
@@ -71,7 +72,7 @@ class IntentRouter(
         for (template in templates) {
             for (keyword in template.keywords) {
                 if (keyword.length < 3) continue
-                val score = fuzzyContains(t, Similarity.norm(keyword))
+                val score = fuzzyByWord(t, Similarity.norm(keyword))
                 if (score > bestScore) {
                     bestScore = score
                     bestTemplate = template
@@ -87,20 +88,23 @@ class IntentRouter(
     }
 
     /**
-     * Насколько фраза в целом похожа на ключевую. Сопоставляет нормированный ввод с ключом.
-     * Точное вхождение ключевого слова (как подстроки) даёт 1.0, иначе Jaro–Winkler.
+     * Нечёткое совпадение «по близкому слову»: true, если какое-то слово входа отличается от
+     * какого-то слова ключа ровно на одну правку (оговорка «сечас»→«сейчас»). Это надёжно фильтрует
+     * случайные фразы и не даёт ложных интентов.
      */
-    private fun fuzzyContains(inputN: String, keywordNorm: String): Double {
+    private fun fuzzyByWord(inputN: String, keywordNorm: String): Double {
         if (keywordNorm.isEmpty()) return 0.0
         if (inputN.contains(keywordNorm)) return 1.0
-        // Нечёткое сходство по словам входа с ключевым словом (ловит оговорки «сечас»→«сейчас»).
-        var best = 0.0
-        for (word in inputN.split(" ")) {
-            if (word.length < 4) continue
-            val s = Similarity.similarity(word, keywordNorm)
-            if (s > best) best = s
+        for (kwWord in keywordNorm.split(" ")) {
+            if (kwWord.length < 4) continue
+            for (inWord in inputN.split(" ")) {
+                if (inWord.length < 4) continue
+                if (StringUtils.levenshteinDistance(inWord, kwWord) <= 1) {
+                    return 1.0
+                }
+            }
         }
-        return best
+        return 0.0
     }
 
     companion object {

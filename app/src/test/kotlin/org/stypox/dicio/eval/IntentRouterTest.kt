@@ -26,6 +26,7 @@ class IntentRouterTest : StringSpec({
 
     "fuzzy: нечётное совпадение распознаётся" {
         // распознанная с искажением фраза должна всё равно дать интент
+        router.classify("сколько сечас")!!.intent shouldBe "TIME"
         router.classify("сколько сечас времени")!!.intent shouldBe "TIME"
         router.classify("спасибо")!!.intent shouldBe "THANKS"
     }
