@@ -69,11 +69,9 @@ object DiagnosticsLog {
     private fun appendToFile(line: String) {
         val file = logFile ?: return
         try {
-            file.apply {
-                val writer = java.io.FileWriter(it, true)
-                writer.write(line + "\n")
-                writer.close()
-            }
+            val writer = java.io.FileWriter(file, true)
+            writer.write(line + "\n")
+            writer.close()
         } catch (t: Throwable) {
             // ignore: логирование не должно ломать работу приложения
         }
