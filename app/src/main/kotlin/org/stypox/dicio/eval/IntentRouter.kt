@@ -1,5 +1,6 @@
 package org.stypox.dicio.eval
 
+import org.stypox.dicio.skills.timer.RuNumbers
 import org.stypox.dicio.util.Similarity
 
 /**
@@ -74,9 +75,13 @@ class IntentRouter {
         Tpl(listOf("включи фонарик", "включи свет"), "FLASHLIGHT_ON"),
         Tpl(listOf("выключи фонарик", "выключи свет"), "FLASHLIGHT_OFF"),
         Tpl(listOf("спокойной ночи", "иди спать", "выключись", "сон"), "SLEEP", "Хорошо, ухожу в сон."),
-        // Понятные, но пока не реализованные команды -> честный отказ, а не «Можете повторить?».
-        Tpl(listOf("будильник", "напоминание", "напомни", "поставь будильник"), "UNSUPPORTED", "Я пока не умею ставить будильники и напоминания."),
     )
+
+    /** Фразы с «будильник/напоминание» без длительности -> честный отказ (UNSUPPORTED).
+     *  С длительностью («поставь будильник на пять минут») это по смыслу таймер — пропускаем в навыки. */
+    private val unsupportedIntent: Tpl =
+        Tpl(listOf("будильник", "напоминание", "напомни", "поставь будильник"), "UNSUPPORTED",
+            "Я пока не умею ставить будильники и напоминания.")
 
     fun classify(rawText: String): Decision? {
         val text = rawText.trim()
@@ -110,6 +115,16 @@ class IntentRouter {
             if (Similarity.anyContains(t, template.keywords)) {
                 return Decision(template.intent, template.reply, rawText, "exact", 1.0)
             }
+        }
+
+        // 3) «Будильник/напоминание» — честный отказ, НО только если фраза без длительности:
+        // «поставь будильник на пять минут» по смыслу — таймер, уходим в навыки таймера.
+        if (Similarity.anyContains(t, unsupportedIntent.keywords)
+            && RuNumbers.parseDuration(t) == null
+        ) {
+            return Decision(
+                unsupportedIntent.intent, unsupportedIntent.reply, rawText, "exact", 1.0
+            )
         }
 
         return null

@@ -53,13 +53,18 @@ class RuTimerSkill(correspondingSkillInfo: SkillInfo) :
         val t = Similarity.norm(input)
         val hasTimerWord = t.contains("таймер") || t.contains("отсчёт") || t.contains("отсчет")
 
-        val isCancel = hasTimerWord &&
+        // «поставь будильник на пять минут» — в быту это таймер-отсчёт (есть длительность)
+        val hasDuration = RuNumbers.parseDuration(input) != null
+        val isAlarmAsTimer = t.contains("будильник") && hasDuration
+
+        val isCancel = (hasTimerWord || isAlarmAsTimer) &&
             (t.contains("отмени") || t.contains("отменить") || t.contains("останови") ||
                 t.contains("остановить") || t.contains("выключи"))
 
         return when {
             isCancel -> Pair(AlwaysBestScore, RuTimerCmd.Cancel)
-            hasTimerWord -> Pair(AlwaysBestScore, RuTimerCmd.Set(RuNumbers.parseDuration(input)))
+            hasTimerWord || isAlarmAsTimer ->
+                Pair(AlwaysBestScore, RuTimerCmd.Set(RuNumbers.parseDuration(input)))
             else -> Pair(AlwaysWorstScore, RuTimerCmd.None)
         }
     }

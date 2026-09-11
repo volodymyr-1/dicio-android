@@ -51,9 +51,11 @@ class IntentRouterTest : StringSpec({
     }
 
     "нереализованные команды -> честный отказ, а не «Можете повторить?»" {
-        router.classify("поставь будильник на завтра на десять утра")!!.intent shouldBe "UNSUPPORTED"
-        router.classify("поставь будильник")!!.intent shouldBe "UNSUPPORTED"
+        router.classify("поставь будильник на семь утра")!!.intent shouldBe "UNSUPPORTED"
         router.classify("напомни мне")!!.intent shouldBe "UNSUPPORTED"
+        // «будильник на пять минут» — по смыслу таймер: не UNSUPPORTED, уходит в навыки таймера
+        router.classify("поставь будильник на пять минут").shouldBeNull()
+        router.classify("поставь таймер на пять минут").shouldBeNull()
     }
 
     "оговорки STT чинятся словарём" {
