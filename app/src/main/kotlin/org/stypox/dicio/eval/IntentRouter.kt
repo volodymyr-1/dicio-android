@@ -1,41 +1,56 @@
 package org.stypox.dicio.eval
 
 import org.stypox.dicio.util.Similarity
-import org.stypox.dicio.util.StringUtils
 
 /**
- * Детерминированный роутер интентов (Вариант C, fuzzy-first).
+ * Детерминированный роутер интентов (Вариант C, refined).
  *
  * Работает ПОВЕРХ свободного распознавания (Vosk/вход). Берёт распознанную фразу и сопоставляет
- * с таблицей «сквозных» интентов (время, дата, приветствие, заряд, громкость, «повтори», ...).
- * Сначала пытается точное совпадение по ключевым словам, при неполном совпадении — нечёткий поиск
- * (Jaro–Winkler) по ключевым фразам. Если ничего не совпало достаточно уверенно — возвращает null,
- * и управление уходит к свободному SkillRanker'у (остальные навыки).
+ * с таблицей «сквозных» интентов.
  *
- * Чистый Kotlin без Android-зависимостей — покрыт юнит-тестами в CI.
+ * Правила (выработаны по боевым логам, чтобы исключить ложные срабатывания):
+ *  1. Оговорки STT («сечас», «пагода») чинятся словарём [sttCorrections] до классификации.
+ *  2. Отрицание/недовольство/уточнение («не», «нет», «почему», «что-то», «не спрашивал»,
+ *     «не понял») включают negative-guard: статичный интент НЕ выдаётся — управление уходит дальше,
+ *     чтобы жалобу не «съел» случайный интент.
+ *  3. Точное совпадение ключевых слов — единственный источник статичных интентов (без агрессивного
+ *     fuzzy по словам, который давал ложные срабатывания: «утра»→GREETING, «контакт»→NAME и т.п.).
+ *
+ * Если ничего не совпало — возвращает null, и управление уходит к свободному SkillRanker'у.
  */
-class IntentRouter(
-    private val fuzzyThreshold: Double = DEFAULT_FUZZY_THRESHOLD,
-) {
+class IntentRouter {
 
     /** Решение роутера: какой интент выбран и готовая реплика (для статичных). */
     data class Decision(
         val intent: String,
         val reply: String? = null,
         val matchedInput: String = "",
-        val matchType: String = "exact", // "exact" | "fuzzy"
+        val matchType: String = "exact",
         val score: Double = 1.0,
     )
 
     private data class Tpl(val keywords: List<String>, val intent: String, val reply: String? = null)
 
     /** Междометия-подтверждения (короткий шум из боевых логов). */
-    private val JustAcknowledgements: List<String> = listOf("ага", "ок", "да", "понятно", "угу", "ясно")
+    private val JustAcknowledgements: List<String> =
+        listOf("ага", "ок", "да", "понятно", "угу", "ясно", "хорошо")
 
     /** Служебные слова-обрывки, которые не являются командами (UNKNOWN_SHORT). */
     private val ShortNoiseWords: List<String> = listOf("мне", "ну", "так", "это", "мда", "ммм")
 
-    /** Ключевые слова для точного сопоставления (по образцу voice-loop Router). */
+    /** Типичные оговорки STT: «сечас»→«сейчас» и т.п. */
+    private val sttCorrections: Map<String, String> = mapOf(
+        "сечас" to "сейчас",
+        "пагода" to "погода",
+    )
+
+    /** Триггеры недовольства/отрицания/уточнения: при их наличии статичный интент не выдаём. */
+    private val negativeGuardKeywords: List<String> = listOf(
+        "не", "нет", "почему", "что-то", "не понял", "не спрашивал", "не спросил",
+        "не надо", "не хочу", "зачем", "стоп", "отмена", "не это", "не тот", "постой",
+    )
+
+    /** Ключевые слова для точного сопоставления (по образцу voice-loop Router + расширено). */
     private val templates: List<Tpl> = listOf(
         Tpl(listOf("врем", "который час", "во сколько", "сколько сейчас", "сколько времени", "час"), "TIME"),
         Tpl(listOf("какое число", "сегодня число", "какой день недели", "день недели", "какой год", "время года"), "DATE"),
@@ -56,77 +71,49 @@ class IntentRouter(
         Tpl(listOf("спокойной ночи", "иди спать", "выключись", "сон"), "SLEEP", "Хорошо, ухожу в сон."),
     )
 
-    /**
-     * Классифицировать распознанную фразу в интент или вернуть null, если интента нет.
-     *
-     * @param rawText распознанный текст (как пришёл из STT/ввода).
-     */
     fun classify(rawText: String): Decision? {
         val text = rawText.trim()
         if (text.isEmpty()) return null
-        val t = Similarity.norm(text)
 
-        // 0) Междометия/короткий шум (по боевым логам: «ага», «мне», «ок», «да»).
+        // Сначала чиним известные оговорки STT, потом нормализуем и смотрим отрицание.
+        val corrected = applySttCorrections(text)
+        val t = Similarity.norm(corrected)
+        if (t.isEmpty()) return null
+
+        // 0) Короткий шум / междометия.
         if (t.split(" ").size <= 2) {
             if (JustAcknowledgements.any { t == it }) {
                 return Decision("ACK", "Понял.", rawText, "exact", 1.0)
             }
-            // Одиночные 1–2-буквенные обрывки или служебные слова-мусор -> вежливый отказ.
             if (t.length < 3 || ShortNoiseWords.any { t == it }) {
                 return Decision("UNKNOWN_SHORT", "Извините, не расслышала.", rawText, "exact", 1.0)
             }
         }
 
-        // 1) точный match: есть ли ключевое слово целиком в фразе
+        // 1) Negative-guard: недовольство/отрицание не должны давать статичный интент.
+        if (negativeGuardKeywords.any { t.contains(it) }) {
+            return null
+        }
+
+        // 2) Точное совпадение ключевых слов (единственный источник статичных интентов).
         for (template in templates) {
             if (Similarity.anyContains(t, template.keywords)) {
                 return Decision(template.intent, template.reply, rawText, "exact", 1.0)
             }
         }
 
-        // 2) нечётный match: ищем похожее слово из ключевых фраз (ловит оговорки)
-        var bestScore = 0.0
-        var bestTemplate: Tpl? = null
-        for (template in templates) {
-            for (keyword in template.keywords) {
-                if (keyword.length < 3) continue
-                val score = fuzzyByWord(t, Similarity.norm(keyword))
-                if (score > bestScore) {
-                    bestScore = score
-                    bestTemplate = template
-                }
-            }
-        }
-
-        if (bestTemplate != null && bestScore >= fuzzyThreshold) {
-            return Decision(bestTemplate.intent, bestTemplate.reply, rawText, "fuzzy", bestScore)
-        }
-
         return null
     }
 
-    /**
-     * Нечёткое совпадение «по близкому слову»: true, если какое-то слово входа отличается от
-     * какого-то слова ключа ровно на одну правку (оговорка «сечас»→«сейчас»). Это надёжно фильтрует
-     * случайные фразы и не даёт ложных интентов.
-     */
-    private fun fuzzyByWord(inputN: String, keywordNorm: String): Double {
-        if (keywordNorm.isEmpty()) return 0.0
-        if (inputN.contains(keywordNorm)) return 1.0
-        for (kwWord in keywordNorm.split(" ")) {
-            if (kwWord.length < 4) continue
-            for (inWord in inputN.split(" ")) {
-                if (inWord.length < 4) continue
-                if (StringUtils.levenshteinDistance(inWord, kwWord) <= 1) {
-                    return 1.0
-                }
+    /** Применяет словарь оговорок к фразе (подстрока → исправление). */
+    private fun applySttCorrections(text: String): String {
+        var result = text
+        for ((from, to) in sttCorrections) {
+            if (from.length < 3) continue
+            if (result.contains(from)) {
+                result = result.replace(from, to)
             }
         }
-        return 0.0
-    }
-
-    companion object {
-        /** Порог уверенности для нечётного совпадения по слову (0..1), ниже — считаем «не нашлось». */
-        const val DEFAULT_FUZZY_THRESHOLD = 0.80
+        return result
     }
 }

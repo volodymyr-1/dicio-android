@@ -44,4 +44,15 @@ class IntentRouterTest : StringSpec({
         router.classify("абракадабра").shouldBeNull()
         router.classify("квантитативный анализ данных").shouldBeNull()
     }
+
+    "negative-guard: недовольство/отрицание не даёт ложный статичный интент" {
+        router.classify("я тебе не спрашивал про интернет поиск где сказал контакт").shouldBeNull()
+        router.classify("я что-то не понял говорить ты умеешь почему ты молчишь").shouldBeNull()
+        router.classify("поставь будильник на завтра на десять утра").shouldBeNull()
+    }
+
+    "оговорки STT чинятся словарём" {
+        router.classify("какая пагода")!!.intent shouldBe "WEATHER"
+        router.classify("сколько сечас")!!.intent shouldBe "TIME"
+    }
 })
