@@ -72,7 +72,7 @@ class RuTimerSkill(correspondingSkillInfo: SkillInfo) :
         }
     }
 
-    private fun setTimer(ctx: SkillContext, duration: Duration?): SkillOutput {
+    private suspend fun setTimer(ctx: SkillContext, duration: Duration?): SkillOutput {
         if (duration == null) {
             return RuTimerOutput(
                 "Уточните длительность. Например: поставь таймер на пять минут."
