@@ -177,6 +177,10 @@ dependencies {
     implementation(libs.jna) { artifact { type = "aar" } }
     implementation(libs.vosk.android)
 
+    // Sherpa-onnx: offline STT (zipformer-ru) + Silero VAD — ru-канал замера (V1, docs/plan.md)
+    // Источник: smartnote (VERIFIED на SM-T220); подключение локальным AAR по паттерну smartnote.
+    implementation(files("libs/sherpa-onnx-1.13.4.aar"))
+
     // LiteRT / Tensorflow Lite
     implementation(libs.litert)
 

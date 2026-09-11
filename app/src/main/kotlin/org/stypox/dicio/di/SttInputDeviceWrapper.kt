@@ -23,6 +23,7 @@ import org.stypox.dicio.io.input.InputEvent
 import org.stypox.dicio.io.input.SttInputDevice
 import org.stypox.dicio.io.input.SttState
 import org.stypox.dicio.io.input.external_popup.ExternalPopupInputDevice
+import org.stypox.dicio.io.input.sherpa.SherpaSttInputDevice
 import org.stypox.dicio.io.input.vosk.VoskInputDevice
 import org.stypox.dicio.settings.datastore.InputDevice
 import org.stypox.dicio.settings.datastore.InputDevice.INPUT_DEVICE_EXTERNAL_POPUP
@@ -106,7 +107,10 @@ class SttInputDeviceWrapperImpl(
         return when (setting) {
             UNRECOGNIZED,
             INPUT_DEVICE_UNSET,
-            INPUT_DEVICE_VOSK -> VoskInputDevice(appContext, okHttpClient, localeManager, silencesBeforeStop)
+            // V1 ЗАМЕР (docs/plan.md): временно форсим sherpa-канал вместо Vosk для A/B на
+            // одинаковых фразах. При NO-GO — вернуть VoskInputDevice (откат одной строки).
+            INPUT_DEVICE_VOSK ->
+                SherpaSttInputDevice(appContext, okHttpClient)
             INPUT_DEVICE_EXTERNAL_POPUP ->
                 ExternalPopupInputDevice(appContext, activityForResultManager, localeManager)
             INPUT_DEVICE_NOTHING -> null
