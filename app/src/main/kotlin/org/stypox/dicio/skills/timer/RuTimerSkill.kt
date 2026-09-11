@@ -80,41 +80,44 @@ class RuTimerSkill(correspondingSkillInfo: SkillInfo) :
         }
 
         var ringtone: Ringtone? = null
-        val setTimer = SetTimer(
-            duration = duration,
-            name = null,
-            onMillisTickCallback = { millis ->
-                if (millis < 0 && ringtone?.isPlaying == false) {
-                    ringtone?.play()
-                }
-            },
-            onSecondsTickCallback = { seconds ->
-                // без dicio-numbers: озвучиваем последние секунды цифрами
-                if (seconds <= 5) {
-                    ctx.speechOutputDevice.speak(seconds.toString())
-                }
-            },
-            onExpiredCallback = { _ ->
-                ringtone = RingtoneManager.getActualDefaultRingtoneUri(
-                    ctx.android, RingtoneManager.TYPE_ALARM
-                )
-                    ?.let { RingtoneManager.getRingtone(ctx.android, it) }
-                    ?.also {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                            it.isLooping = true
-                        }
-                        it.play()
+        // SetTimer создаёт CountDownTimer, которому нужен Looper — создание только на Main
+        val setTimer = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+            SetTimer(
+                duration = duration,
+                name = null,
+                onMillisTickCallback = { millis ->
+                    if (millis < 0 && ringtone?.isPlaying == false) {
+                        ringtone?.play()
                     }
-                if (ringtone == null) {
-                    ctx.speechOutputDevice.speak("Время таймера истекло")
-                }
-            },
-            onCancelCallback = { timerToCancel ->
-                ringtone?.stop()
-                ringtone = null
-                TimerSkill.SET_TIMERS.removeIf { setTimer -> setTimer === timerToCancel }
-            },
-        )
+                },
+                onSecondsTickCallback = { seconds ->
+                    // без dicio-numbers: озвучиваем последние секунды цифрами
+                    if (seconds <= 5) {
+                        ctx.speechOutputDevice.speak(seconds.toString())
+                    }
+                },
+                onExpiredCallback = { _ ->
+                    ringtone = RingtoneManager.getActualDefaultRingtoneUri(
+                        ctx.android, RingtoneManager.TYPE_ALARM
+                    )
+                        ?.let { RingtoneManager.getRingtone(ctx.android, it) }
+                        ?.also {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                it.isLooping = true
+                            }
+                            it.play()
+                        }
+                    if (ringtone == null) {
+                        ctx.speechOutputDevice.speak("Время таймера истекло")
+                    }
+                },
+                onCancelCallback = { timerToCancel ->
+                    ringtone?.stop()
+                    ringtone = null
+                    TimerSkill.SET_TIMERS.removeIf { setTimer -> setTimer === timerToCancel }
+                },
+            )
+        }
         TimerSkill.SET_TIMERS.add(setTimer)
 
         return RuTimerOutput("Таймер запущен на ${formatDurationRu(duration)}.")
