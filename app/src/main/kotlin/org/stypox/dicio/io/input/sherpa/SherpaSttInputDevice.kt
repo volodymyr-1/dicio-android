@@ -24,6 +24,7 @@ import org.stypox.dicio.io.input.InputEvent
 import org.stypox.dicio.io.input.SttInputDevice
 import org.stypox.dicio.io.input.SttState
 import org.stypox.dicio.util.DiagnosticsLog
+import org.stypox.dicio.util.Similarity
 import java.io.File
 import javax.inject.Inject
 
