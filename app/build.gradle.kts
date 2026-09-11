@@ -29,6 +29,12 @@ android {
     namespace = "org.stypox.dicio"
     compileSdk = libs.versions.compileSdk.get().toInt()
 
+    // Не сжимать бинарные модели в APK: сжатые assets больших файлов отдаются через
+    // AssetManager.open() обрезанными («Protobuf parsing failed» — прогон 19:14).
+    androidResources {
+        noCompress += listOf("onnx", "model", "tflite")
+    }
+
     defaultConfig {
         applicationId = "org.stypox.dicio"
         minSdk = libs.versions.minSdk.get().toInt()
