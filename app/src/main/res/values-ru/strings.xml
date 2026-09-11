@@ -43,7 +43,7 @@
     <string name="skill_sentence_example_open">Открой Галерею</string>
     <string name="skill_sentence_example_calculator">Сколько будет пять умножить на четыре минус миллион\?</string>
     <string name="skill_search_here_is_what_i_found">Вот что я нашёл</string>
-    <string name="skill_weather_in_city_there_is_description">В %1$s сейчас %2$s и %3$s градусов</string>
+    <string name="skill_weather_in_city_there_is_description">Погода в городе %1$s: %2$s, %3$s°</string>
     <string name="skill_weather_description_temperature">%1$s · %2$.1f%3$s</string>
     <string name="skill_weather_min_max_wind">Минимальная температура: %1$.1f%4$s
 \nМаксимальная температура: %2$.1f%4$s
