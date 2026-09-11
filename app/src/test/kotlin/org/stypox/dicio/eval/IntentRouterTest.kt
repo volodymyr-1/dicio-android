@@ -48,7 +48,12 @@ class IntentRouterTest : StringSpec({
     "negative-guard: недовольство/отрицание не даёт ложный статичный интент" {
         router.classify("я тебе не спрашивал про интернет поиск где сказал контакт").shouldBeNull()
         router.classify("я что-то не понял говорить ты умеешь почему ты молчишь").shouldBeNull()
-        router.classify("поставь будильник на завтра на десять утра").shouldBeNull()
+    }
+
+    "нереализованные команды -> честный отказ, а не «Можете повторить?»" {
+        router.classify("поставь будильник на завтра на десять утра")!!.intent shouldBe "UNSUPPORTED"
+        router.classify("поставь будильник")!!.intent shouldBe "UNSUPPORTED"
+        router.classify("напомни мне")!!.intent shouldBe "UNSUPPORTED"
     }
 
     "оговорки STT чинятся словарём" {
