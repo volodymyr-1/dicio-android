@@ -123,8 +123,9 @@ class SkillEvaluatorImpl(
             }
         }
         if (staticDecision != null && staticInput != null) {
-            val decision = staticDecision
-            val firstInput = staticInput
+            val decision = staticDecision ?: return
+            val firstInput = staticInput ?: return
+            val reply = decision.reply ?: return
             DiagnosticsLog.log(
                 "ROUTER",
                 "интент=${decision.intent} (${decision.matchType}, score=${decision.score}) " +
@@ -137,7 +138,7 @@ class SkillEvaluatorImpl(
                     skillBeingEvaluated = null,
                 )
             )
-            addInteractionFromPending(StaticReplySkillOutput(decision.reply))
+            addInteractionFromPending(StaticReplySkillOutput(reply))
             return
         }
 
