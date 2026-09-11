@@ -189,6 +189,15 @@ class SherpaSttInputDevice @Inject constructor(
         val minBuf = AudioRecord.getMinBufferSize(
             sampleRate(), AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
         )
+        // Явная проверка разрешения (lint MissingPermission); UI-слой выдаёт пермишен и
+        // перезапустит tryLoad (как с Vosk — MainActivity sttPermissionJob).
+        val micGranted = androidx.core.content.ContextCompat.checkSelfPermission(
+            appContext, android.Manifest.permission.RECORD_AUDIO
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!micGranted) {
+            DiagnosticsLog.log("STT-S", "нет разрешения RECORD_AUDIO — жду выдачи")
+            return
+        }
         try {
             audioRecord = AudioRecord(
                 MediaRecorder.AudioSource.MIC,
