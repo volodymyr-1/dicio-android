@@ -54,6 +54,8 @@ class SherpaSttInputDevice @Inject constructor(
     @Volatile private var listeningActive = false
     @Volatile private var micMutedUntil = 0L
 
+    private val loadLock = Any()
+
     private var currentListener: ((InputEvent) -> Unit)? = null
 
     private fun sampleRate(): Int = 16000
@@ -109,7 +111,13 @@ class SherpaSttInputDevice @Inject constructor(
     }
 
     private fun load() {
-        _state.value = SttState.Loading(thenStartListening = currentListener != null)
+        // Идемпотентность: двойной onCreate запускал ДВЕ параллельные инициализации
+        // sherpa/VAD → нативный SIGABRT (краш при старте, прогон от 18:58). Одна загрузка.
+        synchronized(loadLock) {
+            val cur = _state.value
+            if (cur != SttState.NotLoaded && cur !is SttState.ErrorLoading) return
+            _state.value = SttState.Loading(thenStartListening = currentListener != null)
+        }
         scope.launch {
             try {
                 initRecognizer()
