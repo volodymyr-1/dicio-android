@@ -179,7 +179,7 @@ fun sttSilenceDuration() = IntSetting(
     icon = Icons.Default.HourglassEmpty,
     description = @Composable { stringResource(R.string.pref_stt_silence_duration_description, it) },
     minimum = 1,
-    maximum = 7,
+    maximum = 10,
 )
 
 @Composable

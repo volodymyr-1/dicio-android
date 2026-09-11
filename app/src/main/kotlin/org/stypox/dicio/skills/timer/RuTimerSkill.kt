@@ -96,8 +96,8 @@ class RuTimerSkill(correspondingSkillInfo: SkillInfo) :
                     }
                 },
                 onSecondsTickCallback = { seconds ->
-                    // без dicio-numbers: озвучиваем последние секунды цифрами
-                    if (seconds <= 5) {
+                    // без dicio-numbers: озвучиваем последние секунды цифрами (без «ноль»)
+                    if (seconds in 1..5) {
                         ctx.speechOutputDevice.speak(seconds.toString())
                     }
                 },
@@ -125,7 +125,7 @@ class RuTimerSkill(correspondingSkillInfo: SkillInfo) :
         }
         TimerSkill.SET_TIMERS.add(setTimer)
 
-        return RuTimerOutput("Таймер запущен на ${formatDurationRu(duration)}.")
+        return RuTimerOutput("Таймер запущен. Длительность: ${formatDurationRu(duration)}.")
     }
 
     private fun cancelTimers(): SkillOutput {

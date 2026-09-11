@@ -110,27 +110,35 @@ class SkillEvaluatorImpl(
     }
 
     private suspend fun evaluateMatchingSkill(utterances: List<String>) {
-        // Детерминированный роутер «сквозных» интентов (Вариант C): если фраза уверенно
-        // сопоставилась с известным интентом, отвечаем мгновенно и не идём в свободный SkillRanker.
-        val firstInput = utterances.firstOrNull()
-        if (firstInput != null) {
-            val decision = intentRouter.classify(firstInput)
+        // Детерминированный роутер «сквозных» интентов (Вариант C): пробуем ВСЕ альтернативы
+        // распознавания (Vosk часто даёт несколько), берём первую, давшую статичный ответ.
+        var staticDecision: IntentRouter.Decision? = null
+        var staticInput: String? = null
+        for (utterance in utterances) {
+            val decision = intentRouter.classify(utterance)
             if (decision != null && decision.reply != null) {
-                DiagnosticsLog.log(
-                    "ROUTER",
-                    "интент=${decision.intent} (${decision.matchType}, score=${decision.score}) " +
-                        "ввод=\"$firstInput\" -> статичный ответ"
-                )
-                _state.value = _state.value.copy(
-                    pendingQuestion = PendingQuestion(
-                        userInput = firstInput,
-                        continuesLastInteraction = false,
-                        skillBeingEvaluated = null,
-                    )
-                )
-                addInteractionFromPending(StaticReplySkillOutput(decision.reply))
-                return
+                staticDecision = decision
+                staticInput = utterance
+                break
             }
+        }
+        if (staticDecision != null && staticInput != null) {
+            val decision = staticDecision
+            val firstInput = staticInput
+            DiagnosticsLog.log(
+                "ROUTER",
+                "интент=${decision.intent} (${decision.matchType}, score=${decision.score}) " +
+                    "ввод=\"$firstInput\" -> статичный ответ"
+            )
+            _state.value = _state.value.copy(
+                pendingQuestion = PendingQuestion(
+                    userInput = firstInput,
+                    continuesLastInteraction = false,
+                    skillBeingEvaluated = null,
+                )
+            )
+            addInteractionFromPending(StaticReplySkillOutput(decision.reply))
+            return
         }
 
         val (chosenInput, chosenSkill) = try {

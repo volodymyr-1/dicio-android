@@ -15,9 +15,10 @@ interface SttInputDevice {
     suspend fun destroy()
 
     companion object {
-        // Пользователь часто задумывается / говорит длинные фразы (боевой фидбек): дефолт увеличен с 2 до 6,
-        // чтобы Vosk не обрывал речь при короткой паузе. Диапазон настройки — 1..7.
-        const val DEFAULT_STT_SILENCE_DURATION = 6
+        // Пользователь задумывается и говорит длинные фразы (боевые логи: дважды «не дослушал»).
+        // 6 тихих интервалов не хватило; дефолт = новому максимуму (10). Дефолт фактический:
+        // settings.pb на устройстве не создаётся (uninstall при каждой установке).
+        const val DEFAULT_STT_SILENCE_DURATION = 10
         fun getSttSilenceDurationOrDefault(settings: UserSettings): Int {
             // unfortunately there is no way to tell protobuf to use "2" as the default value
             return settings.sttSilenceDuration.takeIf { it > 0 } ?: DEFAULT_STT_SILENCE_DURATION
