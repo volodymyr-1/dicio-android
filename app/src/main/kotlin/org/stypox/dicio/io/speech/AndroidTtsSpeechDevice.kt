@@ -61,6 +61,7 @@ class AndroidTtsSpeechDevice(private var context: Context, locale: Locale) : Spe
         // Анти-эхо (V1 замер): на время озвучки закрываем «дверь микрофона» ru-канала,
         // после последней фразы открываем с хвостом 400 мс (паттерн smartnote).
         org.stypox.dicio.io.input.sherpa.SherpaSttInputDevice.muteMicWhileSpeaking()
+        org.stypox.dicio.io.input.sherpa.SherpaSttInputDevice.registerSpokenText(speechOutput)
         DiagnosticsLog.log("TTS", "озвучиваю: \"$speechOutput\"")
         if (initializedCorrectly) {
             lastUtteranceId += 1

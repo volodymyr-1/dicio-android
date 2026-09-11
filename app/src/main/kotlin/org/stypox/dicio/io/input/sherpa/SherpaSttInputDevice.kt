@@ -273,9 +273,14 @@ class SherpaSttInputDevice @Inject constructor(
             "STT-S",
             "распознано за ${elapsed} мс (${seconds} с аудио, ${memInfo.totalPss} МБ PSS): \"$text\""
         )
-        if (text.isNotEmpty()) {
-            currentListener?.invoke(InputEvent.Final(listOf(text to 1.0f)))
+        if (text.isEmpty()) return
+
+        // Echo-guard: реплика, совпадающая с только что озвученным ответом — эхо, игнорируем.
+        if (isEchoOfLastSpoken(text)) {
+            DiagnosticsLog.log("STT-S", "эхо игнорировано (похоже на последний ответ)")
+            return
         }
+        currentListener?.invoke(InputEvent.Final(listOf(text to 1.0f)))
     }
 
     /** Анти-эхо: во время озвучки не кормим VAD. Хвост 400 мс — паттерн smartnote. */
@@ -288,6 +293,11 @@ class SherpaSttInputDevice @Inject constructor(
         // Защита от зависания: не дольше 10 с, даже если onDone потеряется.
         @Volatile private var activeInstance: SherpaSttInputDevice? = null
 
+        // Echo-guard (smartnote): игнор реплик, совпадающих с только что озвученным ответом —
+        // иначе приложение обрабатывает собственный TTS как команду (эхо-луп, прогон 5).
+        @Volatile private var lastSpokenText: String = ""
+        @Volatile private var lastSpokenAt: Long = 0L
+
         fun muteMicWhileSpeaking() {
             activeInstance?.let { it.micMutedUntil = System.currentTimeMillis() + 10_000L }
         }
@@ -298,6 +308,11 @@ class SherpaSttInputDevice @Inject constructor(
             }
         }
 
+        fun registerSpokenText(text: String) {
+            lastSpokenText = text
+            lastSpokenAt = System.currentTimeMillis()
+        }
+
         private fun register(instance: SherpaSttInputDevice) {
             activeInstance = instance
         }
@@ -305,5 +320,13 @@ class SherpaSttInputDevice @Inject constructor(
 
     init {
         register(this)
+    }
+
+    /** Echo-guard: реплика — это эхо последнего ответа? */
+    private fun isEchoOfLastSpoken(text: String): Boolean {
+        if (lastSpokenText.isEmpty()) return false
+        val since = System.currentTimeMillis() - lastSpokenAt
+        if (since > 30_000L) return false
+        return Similarity.similarity(text, lastSpokenText) >= 0.6
     }
 }
