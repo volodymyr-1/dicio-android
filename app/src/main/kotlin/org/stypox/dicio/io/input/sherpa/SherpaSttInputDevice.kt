@@ -282,4 +282,28 @@ class SherpaSttInputDevice @Inject constructor(
     fun muteMicForTts() {
         micMutedUntil = System.currentTimeMillis() + 400L
     }
+
+    companion object {
+        // «Дверь микрофона» на время TTS (замер показал эхо: приложение слышало свои ответы).
+        // Защита от зависания: не дольше 10 с, даже если onDone потеряется.
+        @Volatile private var activeInstance: SherpaSttInputDevice? = null
+
+        fun muteMicWhileSpeaking() {
+            activeInstance?.let { it.micMutedUntil = System.currentTimeMillis() + 10_000L }
+        }
+
+        fun unmuteMicAfterTts() {
+            activeInstance?.let {
+                it.micMutedUntil = System.currentTimeMillis() + 400L
+            }
+        }
+
+        private fun register(instance: SherpaSttInputDevice) {
+            activeInstance = instance
+        }
+    }
+
+    init {
+        register(this)
+    }
 }

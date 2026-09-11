@@ -29,6 +29,8 @@ class AndroidTtsSpeechDevice(private var context: Context, locale: Locale) : Spe
                             override fun onStart(utteranceId: String) {}
                             override fun onDone(utteranceId: String) {
                                 if ("dicio_$lastUtteranceId" == utteranceId) {
+                                    // последняя фраза озвучена — открываем микрофон с хвостом
+                                    org.stypox.dicio.io.input.sherpa.SherpaSttInputDevice.unmuteMicAfterTts()
                                     // run only when the last enqueued utterance is finished
                                     for (runnable in runnablesWhenFinished) {
                                         runnable.run()
@@ -40,6 +42,7 @@ class AndroidTtsSpeechDevice(private var context: Context, locale: Locale) : Spe
                             @Suppress("OVERRIDE_DEPRECATION")
                             @Deprecated("")
                             override fun onError(utteranceId: String) {
+                                org.stypox.dicio.io.input.sherpa.SherpaSttInputDevice.unmuteMicAfterTts()
                             }
                         })
                     } else {
@@ -55,6 +58,9 @@ class AndroidTtsSpeechDevice(private var context: Context, locale: Locale) : Spe
     }
 
     override fun speak(speechOutput: String) {
+        // Анти-эхо (V1 замер): на время озвучки закрываем «дверь микрофона» ru-канала,
+        // после последней фразы открываем с хвостом 400 мс (паттерн smartnote).
+        org.stypox.dicio.io.input.sherpa.SherpaSttInputDevice.muteMicWhileSpeaking()
         DiagnosticsLog.log("TTS", "озвучиваю: \"$speechOutput\"")
         if (initializedCorrectly) {
             lastUtteranceId += 1
