@@ -44,10 +44,15 @@ class IntentRouter {
         "пагода" to "погода",
     )
 
-    /** Триггеры недовольства/отрицания/уточнения: при их наличии статичный интент не выдаём. */
-    private val negativeGuardKeywords: List<String> = listOf(
-        "не", "нет", "почему", "что-то", "не понял", "не спрашивал", "не спросил",
-        "не надо", "не хочу", "зачем", "стоп", "отмена", "не это", "не тот", "постой",
+    /** Триггеры недовольства/отрицания/уточнения — «как слово» (word-boundary): при их наличии
+     *  статичный интент не выдаём. «не»/«нет» должны быть отдельными словами, чтобы не ловить
+     *  подстроки в обычных словах («напомни»→«не», «мне», «день»). */
+    private val negativeWordGuard: List<String> = listOf("не", "нет")
+
+    /** Триггеры недовольства/уточнения — «как фраза/подстрока с пробелом между частями». */
+    private val negativePhraseGuard: List<String> = listOf(
+        "не понял", "не спрашивал", "не спросил", "не надо", "не хочу",
+        "почему", "что-то", "зачем", "стоп", "отмена", "не это", "не тот", "постой",
     )
 
     /** Ключевые слова для точного сопоставления (по образцу voice-loop Router + расширено). */
@@ -93,7 +98,10 @@ class IntentRouter {
         }
 
         // 1) Negative-guard: недовольство/отрицание не должны давать статичный интент.
-        if (negativeGuardKeywords.any { t.contains(it) }) {
+        val words = t.split(" ")
+        val hasNegationWord = words.any { w -> negativeWordGuard.contains(w) }
+        val hasNegationPhrase = negativePhraseGuard.any { t.contains(it) }
+        if (hasNegationWord || hasNegationPhrase) {
             return null
         }
 
