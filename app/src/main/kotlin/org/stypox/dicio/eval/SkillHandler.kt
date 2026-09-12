@@ -16,6 +16,7 @@ import org.stypox.dicio.di.SkillContextImpl
 import org.stypox.dicio.di.SkillContextInternal
 import org.stypox.dicio.settings.datastore.UserSettings
 import org.stypox.dicio.settings.datastore.UserSettingsModule
+import org.stypox.dicio.skills.alarm.RuAlarmInfo
 import org.stypox.dicio.skills.calculator.CalculatorInfo
 import org.stypox.dicio.skills.current_time.CurrentTimeInfo
 import org.stypox.dicio.skills.fallback.text.TextFallbackInfo
@@ -54,6 +55,8 @@ class SkillHandler @Inject constructor(
         TimerInfo,
         // русский таймер без dicio-numbers (ADR-8); в ru штатный TimerSkill не строится
         RuTimerInfo,
+        // русский будильник на время (итерация A) — системный AlarmClock intent
+        RuAlarmInfo,
         CurrentTimeInfo,
         MediaInfo,
         JokeInfo,

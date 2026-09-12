@@ -1,5 +1,6 @@
 package org.stypox.dicio.eval
 
+import org.stypox.dicio.skills.alarm.RuTimeParser
 import org.stypox.dicio.skills.timer.RuNumbers
 import org.stypox.dicio.util.Similarity
 
@@ -117,14 +118,19 @@ class IntentRouter {
             }
         }
 
-        // 3) «Будильник/напоминание» — честный отказ, НО только если фраза без длительности:
-        // «поставь будильник на пять минут» по смыслу — таймер, уходим в навыки таймера.
-        if (Similarity.anyContains(t, unsupportedIntent.keywords)
-            && RuNumbers.parseDuration(t) == null
-        ) {
-            return Decision(
-                unsupportedIntent.intent, unsupportedIntent.reply, rawText, "exact", 1.0
-            )
+        // 3) «Будильник/напоминание» — честный отказ, НО с двумя пропусками в навыки:
+        //  - «будильник на пять минут» (есть длительность) → таймер;
+        //  - «будильник на шесть утра» (есть время суток) → навык будильника.
+        if (Similarity.anyContains(t, unsupportedIntent.keywords)) {
+            val hasDuration = RuNumbers.parseDuration(t) != null
+            val hasClockTime = RuTimeParser.parseAlarmTime(t) != null &&
+                (t.contains("будильник") || t.contains("разбуди"))
+            if (!hasDuration && !hasClockTime) {
+                return Decision(
+                    unsupportedIntent.intent, unsupportedIntent.reply, rawText, "exact", 1.0
+                )
+            }
+            return null // уходит в навыки (таймер или будильник)
         }
 
         return null
