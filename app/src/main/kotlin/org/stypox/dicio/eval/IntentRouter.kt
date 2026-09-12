@@ -78,11 +78,10 @@ class IntentRouter {
         Tpl(listOf("спокойной ночи", "иди спать", "выключись", "сон"), "SLEEP", "Хорошо, ухожу в сон."),
     )
 
-    /** Фразы с «будильник/напоминание» без длительности -> честный отказ (UNSUPPORTED).
-     *  С длительностью («поставь будильник на пять минут») это по смыслу таймер — пропускаем в навыки. */
+    /** Фразы «напомин*» — честный отказ (будильник теперь реализован и не попадает сюда). */
     private val unsupportedIntent: Tpl =
-        Tpl(listOf("будильник", "напомин", "напомним", "напомни", "напоминание", "поставь будильник"), "UNSUPPORTED",
-            "Я пока не умею ставить будильники и напоминания.")
+        Tpl(listOf("напомин", "напомним", "напомни", "напоминание"), "UNSUPPORTED",
+            "Я пока не умею ставить напоминания.")
 
     fun classify(rawText: String): Decision? {
         val text = rawText.trim()
@@ -118,19 +117,14 @@ class IntentRouter {
             }
         }
 
-        // 3) «Будильник/напоминание» — честный отказ, НО с двумя пропусками в навыки:
-        //  - «будильник на пять минут» (есть длительность) → таймер;
-        //  - «будильник на шесть утра» (есть время суток) → навык будильника.
-        if (Similarity.anyContains(t, unsupportedIntent.keywords)) {
-            val hasDuration = RuNumbers.parseDuration(t) != null
-            val hasClockTime = RuTimeParser.parseAlarmTime(t) != null &&
-                (t.contains("будильник") || t.contains("разбуди"))
-            if (!hasDuration && !hasClockTime) {
-                return Decision(
-                    unsupportedIntent.intent, unsupportedIntent.reply, rawText, "exact", 1.0
-                )
-            }
-            return null // уходит в навыки (таймер или будильник)
+        // 3) Будильник теперь РЕАЛИЗОВАН (навык будильника) — роутер пропускает его в навыки.
+        // 4) «Напомин*» — честный отказ (навыка напоминаний ещё нет).
+        if (Similarity.anyContains(t, unsupportedIntent.keywords)
+            && !t.contains("будильник") && !t.contains("разбуди")
+        ) {
+            return Decision(
+                unsupportedIntent.intent, unsupportedIntent.reply, rawText, "exact", 1.0
+            )
         }
 
         return null

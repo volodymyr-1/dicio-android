@@ -20,17 +20,16 @@ object RuTimeParser {
      * @return [TimeOfDay] или null, если времени в фразе нет.
      */
     fun parseAlarmTime(text: String): TimeOfDay? {
+        if (text.trim().isEmpty()) return null
         val t = Similarity.norm(text)
-        if (t.isEmpty()) return null
 
-        // 1) Цифровой формат «6:30» / «6.30»
-        val digits = Regex("(\\d{1,2})[:.]\\s*(\\d{2})").find(t)
+        // 1) Цифровой формат «6:30» / «7.30» — ищем на СЫРОМ тексте: norm удаляет «.»
+        val digits = Regex("(\\d{1,2})\\s*[:.]\\s*(\\d{2})").find(text)
         if (digits != null) {
             val h = digits.groupValues[1].toInt()
             val m = digits.groupValues[2].toInt()
-            val period = detectDayPeriod(t)
             if (h in 0..23 && m in 0..59) {
-                return TimeOfDay(applyDayPeriod(h, period), m)
+                return TimeOfDay(applyDayPeriod(h, detectDayPeriod(t)), m)
             }
         }
 
