@@ -17,6 +17,7 @@ import org.dicio.skill.skill.SkillInfo
 import org.dicio.skill.skill.SkillOutput
 import org.dicio.skill.skill.Specificity
 import org.stypox.dicio.io.graphical.HeadlineSpeechSkillOutput
+import org.stypox.dicio.skills.confirm.ConfirmOutput
 import org.stypox.dicio.util.Similarity
 import java.time.Duration
 
@@ -83,7 +84,32 @@ class RuTimerSkill(correspondingSkillInfo: SkillInfo) :
                 "Уточните длительность. Например: поставь таймер на пять минут."
             )
         }
+        val durationText = formatDurationRu(duration)
+        val info = correspondingSkillInfo
 
+        // Подтверждение перед исполнением (итерация D, confirm-before-execute):
+        // ошибки интерпретации ловятся диалогом, а не фатально.
+        return ConfirmOutput(
+            confirmText = "Я поставлю таймер на $durationText. Подтверждаете?",
+            correspondingSkillInfo = info,
+            finishText = "Таймер идёт.",
+            execute = {
+                startTimerInternal(ctx, duration)
+                "Таймер запущен."
+            },
+            onCorrection = { phrase ->
+                val newDuration = RuNumbers.parseDuration(phrase)
+                if (newDuration != null) {
+                    // корректировка: «а не на одну, а на пять минут» — берём последнюю длительность
+                    setTimer(ctx, newDuration)
+                } else {
+                    null // не корректировка — повторим вопрос
+                }
+            },
+        )
+    }
+
+    private suspend fun startTimerInternal(ctx: SkillContext, duration: Duration) {
         var ringtone: Ringtone? = null
         // SetTimer создаёт CountDownTimer, которому нужен Looper — создание только на Main
         val setTimer = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -124,8 +150,6 @@ class RuTimerSkill(correspondingSkillInfo: SkillInfo) :
             )
         }
         TimerSkill.SET_TIMERS.add(setTimer)
-
-        return RuTimerOutput("Таймер запущен. Длительность: ${formatDurationRu(duration)}.")
     }
 
     private fun cancelTimers(): SkillOutput {

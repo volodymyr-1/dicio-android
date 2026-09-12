@@ -18,6 +18,7 @@ import org.dicio.skill.skill.SkillOutput
 import org.dicio.skill.skill.Specificity
 import org.stypox.dicio.R
 import org.stypox.dicio.io.graphical.HeadlineSpeechSkillOutput
+import org.stypox.dicio.skills.confirm.ConfirmOutput
 import org.stypox.dicio.util.Similarity
 import java.util.Calendar
 
@@ -85,7 +86,39 @@ class RuAlarmSkill(correspondingSkillInfo: SkillInfo) :
         }
     }
 
-    private fun setAlarm(ctx: SkillContext, cmd: RuAlarmCmd.Set): SkillOutput {
+    private suspend fun setAlarm(ctx: SkillContext, cmd: RuAlarmCmd.Set): SkillOutput {
+        val timeText = formatTime(cmd.hour, cmd.minute)
+        val daysText = when {
+            cmd.days != null && cmd.days.size == 7 -> " на каждое утро"
+            cmd.days != null && cmd.days.size == 5 -> " на будни"
+            cmd.days != null -> " по выбранным дням"
+            else -> ""
+        }
+        val info = correspondingSkillInfo
+
+        // Подтверждение перед исполнением (итерация D): ошибки STT ловятся диалогом.
+        return ConfirmOutput(
+            confirmText = "Я поставлю будильник на $timeText$daysText. Подтверждаете?",
+            correspondingSkillInfo = info,
+            finishText = "Будильник идёт.",
+            execute = {
+                startAlarmInternal(ctx, cmd)
+                "Будильник установлен."
+            },
+            onCorrection = { phrase ->
+                val newTime = RuTimeParser.parseAlarmTime(phrase)
+                if (newTime != null) {
+                    // корректировка: «а не на 7:30, а на 7:00» — берём ПОСЛЕДНЕЕ время в фразе
+                    setAlarm(ctx, RuAlarmCmd.Set(newTime.hour, newTime.minute,
+                        RuTimeParser.parseDays(phrase) ?: cmd.days))
+                } else {
+                    null
+                }
+            },
+        )
+    }
+
+    private fun startAlarmInternal(ctx: SkillContext, cmd: RuAlarmCmd.Set) {
         val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
             putExtra(AlarmClock.EXTRA_HOUR, cmd.hour)
             putExtra(AlarmClock.EXTRA_MINUTES, cmd.minute)
@@ -96,15 +129,6 @@ class RuAlarmSkill(correspondingSkillInfo: SkillInfo) :
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         ctx.android.startActivity(intent)
-        val daysText = when {
-            cmd.days != null && cmd.days.size == 7 -> " на каждое утро"
-            cmd.days != null && cmd.days.size == 5 -> " на будни"
-            cmd.days != null -> " по выбранным дням"
-            else -> ""
-        }
-        return RuAlarmOutput(
-            "Будильник установлен$daysText на ${formatTime(cmd.hour, cmd.minute)}."
-        )
     }
 
     private fun dismissAlarm(ctx: SkillContext): SkillOutput {
