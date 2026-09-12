@@ -3,6 +3,7 @@ package org.stypox.dicio.skills.alarm
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.provider.AlarmClock
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.runtime.Composable
@@ -85,12 +86,12 @@ class RuAlarmSkill(correspondingSkillInfo: SkillInfo) :
     }
 
     private fun setAlarm(ctx: SkillContext, cmd: RuAlarmCmd.Set): SkillOutput {
-        val intent = Intent(android.app.AlarmClock.ACTION_SET_ALARM).apply {
-            putExtra(android.app.AlarmClock.EXTRA_HOUR, cmd.hour)
-            putExtra(android.app.AlarmClock.EXTRA_MINUTES, cmd.minute)
-            putExtra(android.app.AlarmClock.EXTRA_SKIP_UI, true)
+        val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
+            putExtra(AlarmClock.EXTRA_HOUR, cmd.hour)
+            putExtra(AlarmClock.EXTRA_MINUTES, cmd.minute)
+            putExtra(AlarmClock.EXTRA_SKIP_UI, true)
             if (cmd.days != null) {
-                putExtra(android.app.AlarmClock.EXTRA_DAYS, ArrayList(cmd.days))
+                putExtra(AlarmClock.EXTRA_DAYS, ArrayList(cmd.days))
             }
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
@@ -108,10 +109,12 @@ class RuAlarmSkill(correspondingSkillInfo: SkillInfo) :
 
     private fun dismissAlarm(ctx: SkillContext): SkillOutput {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val intent = Intent(android.app.AlarmClock.ACTION_DISMISS_ALARM).apply {
-                putExtra(android.app.AlarmClock.EXTRA_ALARM_SEARCH_MODE,
-                    android.app.AlarmClock.ALARM_SEARCH_MODE_TIME)
-                putExtra(android.app.AlarmClock.EXTRA_SKIP_UI, true)
+            val intent = Intent(AlarmClock.ACTION_DISMISS_ALARM).apply {
+                putExtra(
+                    AlarmClock.EXTRA_ALARM_SEARCH_MODE,
+                    AlarmClock.ALARM_SEARCH_MODE_TIME
+                )
+                putExtra(AlarmClock.EXTRA_SKIP_UI, true)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             ctx.android.startActivity(intent)
