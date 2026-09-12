@@ -59,7 +59,8 @@ class SherpaSttInputDevice @Inject constructor(
     private var currentListener: ((InputEvent) -> Unit)? = null
 
     private fun sampleRate(): Int = 16000
-    private fun endGapMs(): Long = 2500L
+    private fun endGapMs(): Long = 1200L     // первый рубеж: пауза, вероятно, конец фразы
+    private fun extraConfirmMs(): Long = 2500L // второй рубеж: пауза после полной мысли
     private fun modelDir(): String = "sherpa-onnx-zipformer-ru-int8-2025-04-20"
 
     override fun tryLoad(thenStartListeningEventListener: ((InputEvent) -> Unit)?): Boolean {
@@ -258,7 +259,16 @@ class SherpaSttInputDevice @Inject constructor(
                     val full = utter.toFloatArray()
                     utter.clear(); hadSpeech = false
                     if (full.isNotEmpty() && listeningActive) {
-                        handleUtterance(full)
+                        // Barge-in/добор (прогон 16:39): исполнять только если после реплики
+                        // подтверждена дополнительная тишина (пользователь закончил мысль,
+                        // а не сделал короткую паузу в середине команды).
+                        if (now - lastVoice > extraConfirmMs()) {
+                            handleUtterance(full)
+                        } else {
+                            // ещё не подтверждено — вернём сэмплы в очередь и продолжим слушать
+                            for (sample in full) utter.add(sample)
+                            hadSpeech = true
+                        }
                     }
                 }
             }
@@ -285,11 +295,20 @@ class SherpaSttInputDevice @Inject constructor(
         if (text.isEmpty()) return
 
         // Echo-guard: реплика, совпадающая с только что озвученным ответом — эхо, игнорируем.
-        if (isEchoOfLastSpoken(text)) {
+        // НО: командные слова (поставь/отмени/какая/сколько) — всегда живая речь, пропускаем
+        // (эхо никогда не содержит команды; прогон 16:39 — живая фраза была отброшена).
+        if (isEchoOfLastSpoken(text) && !looksLikeCommand(text)) {
             DiagnosticsLog.log("STT-S", "эхо игнорировано (похоже на последний ответ)")
             return
         }
         currentListener?.invoke(InputEvent.Final(listOf(text to 1.0f)))
+    }
+
+    private fun looksLikeCommand(text: String): Boolean {
+        val t = text.lowercase()
+        return t.contains("поставь") || t.contains("отмени") || t.contains("отменить") ||
+            t.contains("какая") || t.contains("сколько") || t.contains("как ") ||
+            t.contains("что ты") || t.contains("запусти")
     }
 
     /** Анти-эхо: во время озвучки не кормим VAD. Хвост 400 мс — паттерн smartnote. */
